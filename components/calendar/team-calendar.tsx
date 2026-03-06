@@ -17,11 +17,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppData } from "@/hooks/useAppData"
 import { addCalendarEvent, deleteCalendarEvent } from "@/lib/firebaseService"
 
-const eventTypeConfig: Record<string, { color: string; icon: typeof CalendarDays; label: string }> = {
-  deadline: { color: "bg-primary/20 text-primary border-primary/30", icon: Target, label: "Deadline" },
-  meeting: { color: "bg-blue-500/20 text-blue-400 border-blue-500/30", icon: Users, label: "Meeting" },
-  deliverable: { color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", icon: CalendarDays, label: "Deliverable" },
-  installation: { color: "bg-orange-500/20 text-orange-400 border-orange-500/30", icon: MapPin, label: "Installation" },
+const eventTypeConfig: Record<string, { color: string; icon: typeof CalendarDays; label: string; dot: string; bg: string; ring: string }> = {
+  deadline: {
+    color: "bg-primary/20 text-primary border-primary/30",
+    icon: Target,
+    label: "Deadline",
+    dot: "bg-primary",
+    bg: "bg-red-500/10 dark:bg-red-500/10",
+    ring: "ring-red-400/40",
+  },
+  meeting: {
+    color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    icon: Users,
+    label: "Meeting",
+    dot: "bg-blue-400",
+    bg: "bg-blue-500/10 dark:bg-blue-500/10",
+    ring: "ring-blue-400/40",
+  },
+  deliverable: {
+    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    icon: CalendarDays,
+    label: "Deliverable",
+    dot: "bg-emerald-400",
+    bg: "bg-emerald-500/10 dark:bg-emerald-500/10",
+    ring: "ring-emerald-400/40",
+  },
+  installation: {
+    color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+    icon: MapPin,
+    label: "Installation",
+    dot: "bg-orange-400",
+    bg: "bg-orange-500/10 dark:bg-orange-500/10",
+    ring: "ring-orange-400/40",
+  },
+  project: {
+    color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    icon: Target,
+    label: "Project Deadline",
+    dot: "bg-purple-400",
+    bg: "bg-purple-500/10 dark:bg-purple-500/10",
+    ring: "ring-purple-400/40",
+  },
+}
+
+const getDayStyle = (events: any[]): { bg: string; ring: string; badgeDot: string } => {
+  if (events.length === 0) return { bg: "", ring: "", badgeDot: "bg-muted-foreground" }
+  const priorityOrder = ["deadline", "meeting", "deliverable", "installation", "project"]
+  const eventTypes = events.map((e) => e.type)
+  for (const type of priorityOrder) {
+    if (eventTypes.includes(type)) {
+      const cfg = eventTypeConfig[type]
+      return { bg: cfg.bg, ring: cfg.ring, badgeDot: cfg.dot }
+    }
+  }
+  return { bg: "", ring: "", badgeDot: "bg-muted-foreground" }
 }
 
 export function TeamCalendar() {
@@ -46,17 +95,36 @@ export function TeamCalendar() {
 
   const getEventsForDay = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd")
-    return calendarEvents.filter((e) => e.date === dateStr)
+    const calendarEvts = calendarEvents.filter((e) => e.date === dateStr)
+    const projectEvts = projects
+      .filter((p) => p.status !== "Completed" && format(new Date(p.deadline), "yyyy-MM-dd") === dateStr)
+      .map((p) => ({
+        id: `project-${p.id}`,
+        title: p.name,
+        date: dateStr,
+        type: "project" as const,
+        projectId: p.id,
+      }))
+    return [...calendarEvts, ...projectEvts]
   }
 
   const selectedDayEvents = selectedDate ? getEventsForDay(selectedDate) : []
 
   const upcomingEvents = useMemo(() => {
-    return [...calendarEvents]
+    const projectDeadlines = projects
+      .filter((p) => p.status !== "Completed" && new Date(p.deadline) >= monthStart && new Date(p.deadline) <= monthEnd)
+      .map((p) => ({
+        id: `project-${p.id}`,
+        title: p.name,
+        date: p.deadline,
+        type: "project" as const,
+        projectId: p.id,
+      }))
+    return [...calendarEvents, ...projectDeadlines]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .filter((e) => new Date(e.date) >= monthStart && new Date(e.date) <= monthEnd)
       .slice(0, 8)
-  }, [calendarEvents, currentMonth])
+  }, [calendarEvents, projects, currentMonth])
 
   const handleAddEvent = async () => {
     if (!form.title.trim() || !form.date) return
@@ -78,6 +146,7 @@ export function TeamCalendar() {
   }
 
   const handleDeleteEvent = async (id: string) => {
+    if (id.startsWith("project-")) return
     setDeletingId(id)
     try {
       await deleteCalendarEvent(id)
@@ -191,37 +260,42 @@ export function TeamCalendar() {
                   const events = getEventsForDay(day)
                   const isCurrentMonth = isSameMonth(day, currentMonth)
                   const isSelected = selectedDate ? isSameDay(day, selectedDate) : false
+                  const todayDay = isToday(day)
+                  const { bg, ring, badgeDot } = getDayStyle(events)
+
                   return (
                     <button
                       key={day.toISOString()}
                       onClick={() => setSelectedDate(day)}
                       className={`relative flex flex-col items-center p-1.5 sm:p-2 rounded-lg min-h-[60px] sm:min-h-[72px] transition-colors
                         ${isCurrentMonth ? "text-foreground" : "text-muted-foreground/40"}
-                        ${isSelected ? "bg-primary/10 ring-1 ring-primary" : "hover:bg-secondary"}`}
+                        ${isSelected
+                          ? "bg-primary/10 ring-1 ring-primary"
+                          : events.length > 0
+                            ? `${bg} ring-1 ${ring}`
+                            : "hover:bg-secondary"
+                        }`}
                     >
-                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday(day) ? "bg-primary text-primary-foreground" : ""}`}>
+                      <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full
+                        ${todayDay ? "bg-primary text-primary-foreground" : ""}`}>
                         {format(day, "d")}
                       </span>
-                      <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
-                        {events.slice(0, 3).map((event) => (
-                          <div key={event.id} className={`h-1.5 w-1.5 rounded-full ${
-                            event.type === "deadline" ? "bg-primary" :
-                            event.type === "meeting" ? "bg-blue-400" :
-                            event.type === "deliverable" ? "bg-emerald-400" : "bg-orange-400"
-                          }`} />
-                        ))}
-                      </div>
+
+                      {events.length > 0 && (
+                        <div className="mt-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-background/60 border border-border">
+                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${badgeDot}`} />
+                          <span className="text-[10px] font-medium text-foreground leading-none">{events.length}</span>
+                        </div>
+                      )}
                     </button>
                   )
                 })}
               </div>
+
               <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border">
                 {Object.entries(eventTypeConfig).map(([type, config]) => (
                   <div key={type} className="flex items-center gap-1.5">
-                    <div className={`h-2 w-2 rounded-full ${
-                      type === "deadline" ? "bg-primary" : type === "meeting" ? "bg-blue-400" :
-                      type === "deliverable" ? "bg-emerald-400" : "bg-orange-400"
-                    }`} />
+                    <div className={`h-2 w-2 rounded-full ${config.dot}`} />
                     <span className="text-xs text-muted-foreground">{config.label}</span>
                   </div>
                 ))}
@@ -242,6 +316,7 @@ export function TeamCalendar() {
                     {selectedDayEvents.map((event) => {
                       const config = eventTypeConfig[event.type]
                       const project = projects.find((p) => p.id === event.projectId)
+                      const isProjectEvent = event.id.startsWith("project-")
                       return (
                         <div key={event.id} className="flex items-start gap-3 p-2 rounded-lg bg-secondary group">
                           <div className={`flex h-7 w-7 items-center justify-center rounded-md ${config.color} shrink-0 mt-0.5`}>
@@ -251,12 +326,14 @@ export function TeamCalendar() {
                             <p className="text-sm font-medium text-foreground">{event.title}</p>
                             {project && <p className="text-xs text-muted-foreground">{project.client}</p>}
                           </div>
-                          <button
-                            onClick={() => handleDeleteEvent(event.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
-                          >
-                            {deletingId === event.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                          </button>
+                          {!isProjectEvent && (
+                            <button
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
+                            >
+                              {deletingId === event.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                            </button>
+                          )}
                         </div>
                       )
                     })}
@@ -273,23 +350,23 @@ export function TeamCalendar() {
               <div className="flex flex-col gap-2">
                 {upcomingEvents.map((event) => {
                   const config = eventTypeConfig[event.type]
+                  const isProjectEvent = event.id.startsWith("project-")
                   return (
                     <div key={event.id} className="flex items-center gap-3 py-1.5 group">
-                      <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                        event.type === "deadline" ? "bg-primary" : event.type === "meeting" ? "bg-blue-400" :
-                        event.type === "deliverable" ? "bg-emerald-400" : "bg-orange-400"
-                      }`} />
+                      <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${config.dot}`} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground truncate">{event.title}</p>
                         <p className="text-xs text-muted-foreground">{format(new Date(event.date), "MMM d")}</p>
                       </div>
                       <Badge variant="outline" className={`text-[10px] ${config.color} shrink-0`}>{config.label}</Badge>
-                      <button
-                        onClick={() => handleDeleteEvent(event.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
-                      >
-                        {deletingId === event.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      </button>
+                      {!isProjectEvent && (
+                        <button
+                          onClick={() => handleDeleteEvent(event.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
+                        >
+                          {deletingId === event.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
                     </div>
                   )
                 })}

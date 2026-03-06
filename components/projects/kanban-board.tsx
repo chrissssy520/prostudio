@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { format } from "date-fns"
 import { Plus, GripVertical } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -44,7 +43,6 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBoardProps) {
   const { teamMembers } = useAppData()
-  const router = useRouter()
 
   const fallback = getProjectTasks(projectId)
   const [tasksList, setTasksList] = useState<Task[]>(initialTasks ?? fallback)
@@ -100,99 +98,86 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{tasksList.length} tasks</p>
-        <div className="flex items-center gap-2">
-
-          {/* ✅ Add Project button — redirects to projects page */}
-          <Button
-            variant="outline"
-            className="gap-2 border-border text-foreground bg-secondary"
-            onClick={() => router.push("/projects")}
-          >
-            <Plus className="h-4 w-4" /> Add Project
-          </Button>
-
-          {/* Add Task button */}
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4" /> Add Task
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border text-foreground">
-              <DialogHeader>
-                <DialogTitle className="text-foreground">New Task</DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-col gap-4 mt-2">
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+              <Plus className="h-4 w-4" /> Add Task
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-card border-border text-foreground">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">New Task</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 mt-2">
+              <div className="flex flex-col gap-2">
+                <Label className="text-foreground">Task Name</Label>
+                <Input
+                  value={newTask.name}
+                  onChange={(e) => setNewTask((p) => ({ ...p, name: e.target.value }))}
+                  className="bg-secondary border-border text-foreground"
+                  placeholder="Enter task name..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label className="text-foreground">Task Name</Label>
+                  <Label className="text-foreground">Assignee</Label>
+                  <Select value={newTask.assigneeId} onValueChange={(v) => setNewTask((p) => ({ ...p, assigneeId: v }))}>
+                    <SelectTrigger className="bg-secondary border-border text-foreground">
+                      <SelectValue placeholder="Select assignee" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {teamMembers.map((m) => (
+                        <SelectItem key={m.id} value={m.id} className="text-foreground">
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className="text-foreground">Due Date</Label>
                   <Input
-                    value={newTask.name}
-                    onChange={(e) => setNewTask((p) => ({ ...p, name: e.target.value }))}
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))}
                     className="bg-secondary border-border text-foreground"
-                    placeholder="Enter task name..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-foreground">Assignee</Label>
-                    <Select value={newTask.assigneeId} onValueChange={(v) => setNewTask((p) => ({ ...p, assigneeId: v }))}>
-                      <SelectTrigger className="bg-secondary border-border text-foreground">
-                        <SelectValue placeholder="Select assignee" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        {teamMembers.map((m) => (
-                          <SelectItem key={m.id} value={m.id} className="text-foreground">
-                            {m.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-foreground">Due Date</Label>
-                    <Input
-                      type="date"
-                      value={newTask.dueDate}
-                      onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))}
-                      className="bg-secondary border-border text-foreground"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-foreground">Priority</Label>
-                    <Select value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v as Task["priority"] }))}>
-                      <SelectTrigger className="bg-secondary border-border text-foreground">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        <SelectItem value="high" className="text-foreground">High</SelectItem>
-                        <SelectItem value="medium" className="text-foreground">Medium</SelectItem>
-                        <SelectItem value="low" className="text-foreground">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-foreground">Category</Label>
-                    <Select value={newTask.category} onValueChange={(v) => setNewTask((p) => ({ ...p, category: v }))}>
-                      <SelectTrigger className="bg-secondary border-border text-foreground">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        {categories.map((c) => (
-                          <SelectItem key={c} value={c} className="text-foreground">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button onClick={handleAddTask} className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-                  Create Task
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label className="text-foreground">Priority</Label>
+                  <Select value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v as Task["priority"] }))}>
+                    <SelectTrigger className="bg-secondary border-border text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="high" className="text-foreground">High</SelectItem>
+                      <SelectItem value="medium" className="text-foreground">Medium</SelectItem>
+                      <SelectItem value="low" className="text-foreground">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label className="text-foreground">Category</Label>
+                  <Select value={newTask.category} onValueChange={(v) => setNewTask((p) => ({ ...p, category: v }))}>
+                    <SelectTrigger className="bg-secondary border-border text-foreground">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      {categories.map((c) => (
+                        <SelectItem key={c} value={c} className="text-foreground">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button onClick={handleAddTask} className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+                Create Task
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <ScrollArea className="w-full">
