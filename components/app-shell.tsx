@@ -17,6 +17,9 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppData } from "@/hooks/useAppData"
+ import { LogOut } from "lucide-react"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -82,24 +85,30 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         </nav>
       </ScrollArea>
 
-      {/* User + Footer */}
-      <div className="border-t border-border px-4 py-4 flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-            CO
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">Christian Kho Aler</p>
-            <p className="text-xs text-muted-foreground truncate">Project Manager</p>
-          </div>
-        </div>
-        {/* Signature footer */}
-        <p className="text-[10px] text-muted-foreground/40 text-center leading-tight">
-          Designed & built by{" "}
-          <span className="text-muted-foreground/60 font-medium">Christian Kho Aler</span>
-          <br />ProStudio © 2026
-        </p>
-      </div>
+    {/* User + Footer */}
+<div className="border-t border-border px-4 py-4 flex flex-col gap-3">
+  <div className="flex items-center gap-3">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+      CO
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium text-foreground truncate">Christian Kho Aler</p>
+      <p className="text-xs text-muted-foreground truncate">Project Manager</p>
+    </div>
+    <button
+      onClick={() => signOut(auth)}
+      className="text-muted-foreground hover:text-destructive transition-colors p-1"
+      title="Logout"
+    >
+      <LogOut className="h-4 w-4" />
+    </button>
+  </div>
+  <p className="text-[10px] text-muted-foreground/40 text-center leading-tight">
+    Designed & built by{" "}
+    <span className="text-muted-foreground/60 font-medium">Christian Otnis</span>
+    <br />ProStudio © 2026
+  </p>
+</div>
     </div>
   )
 }
