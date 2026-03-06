@@ -5,6 +5,7 @@ export type TeamMember = {
   initials: string
   activeTasks: number
   workload: "overloaded" | "balanced" | "free"
+  email?: string
 }
 
 export type Task = {
@@ -129,7 +130,6 @@ export const projects: Project[] = [
 ]
 
 export const tasks: Task[] = [
-  // PHILcon 2025 Booth tasks
   { id: "t1", name: "Finalize booth layout (1800x900x438cm)", assigneeId: "tm1", dueDate: "2025-06-20", priority: "high", category: "Concept", status: "done", projectId: "p1" },
   { id: "t2", name: "3D model - main structure", assigneeId: "tm2", dueDate: "2025-07-01", priority: "high", category: "3D Modeling", status: "in-progress", projectId: "p1" },
   { id: "t3", name: "Render client walkthrough video", assigneeId: "tm2", dueDate: "2025-07-10", priority: "medium", category: "Rendering", status: "todo", projectId: "p1" },
@@ -137,11 +137,9 @@ export const tasks: Task[] = [
   { id: "t5", name: "Client approval - final design", assigneeId: "tm5", dueDate: "2025-07-15", priority: "high", category: "Client Approval", status: "todo", projectId: "p1" },
   { id: "t6", name: "Fabricate steel framework", assigneeId: "tm4", dueDate: "2025-08-01", priority: "medium", category: "Fabrication", status: "todo", projectId: "p1" },
   { id: "t7", name: "On-site installation", assigneeId: "tm4", dueDate: "2025-09-10", priority: "high", category: "Installation", status: "todo", projectId: "p1" },
-  // Holiday Window Display tasks
   { id: "t8", name: "Mood board & concept sketches", assigneeId: "tm3", dueDate: "2025-08-15", priority: "medium", category: "Concept", status: "in-progress", projectId: "p2" },
   { id: "t9", name: "3D scene modeling", assigneeId: "tm2", dueDate: "2025-09-01", priority: "low", category: "3D Modeling", status: "todo", projectId: "p2" },
   { id: "t10", name: "Client presentation", assigneeId: "tm5", dueDate: "2025-09-15", priority: "medium", category: "Client Approval", status: "todo", projectId: "p2" },
-  // Product Launch Stage tasks
   { id: "t11", name: "Stage design concept", assigneeId: "tm2", dueDate: "2025-06-15", priority: "high", category: "Concept", status: "done", projectId: "p3" },
   { id: "t12", name: "3D stage render", assigneeId: "tm2", dueDate: "2025-06-25", priority: "high", category: "Rendering", status: "done", projectId: "p3" },
   { id: "t13", name: "Client sign-off on design", assigneeId: "tm5", dueDate: "2025-07-05", priority: "high", category: "Client Approval", status: "review", projectId: "p3" },

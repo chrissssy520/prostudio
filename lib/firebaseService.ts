@@ -13,6 +13,12 @@ import {
 } from "firebase/firestore"
 import { db } from "./firebase"
 import type { Project, Task, TeamMember, CalendarEvent, Notification, ActivityItem } from "./data"
+import { notifyTeam } from "./notifyTeam"
+
+async function getTeamEmails(): Promise<string[]> {
+  const snapshot = await getDocs(collection(db, "teamMembers"))
+  return snapshot.docs.map((doc) => doc.data().email).filter(Boolean)
+}
 
 // ─── PROJECTS ────────────────────────────────────────────────────────────────
 
@@ -25,15 +31,30 @@ export function subscribeToProjects(callback: (projects: Project[]) => void) {
 }
 
 export async function addProject(project: Omit<Project, "id">) {
-  return await addDoc(collection(db, "projects"), {
+  const ref = await addDoc(collection(db, "projects"), {
     ...project,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+  const emails = await getTeamEmails()
+  await notifyTeam(
+    `🚀 New project created — ${project.name}`,
+    `A new project has been created.<br><br><strong>${project.name}</strong><br>Client: ${project.client}<br>Deadline: ${project.deadline}`,
+    emails
+  )
+  return ref
 }
 
 export async function updateProject(id: string, data: Partial<Project>) {
   await updateDoc(doc(db, "projects", id), { ...data, updatedAt: serverTimestamp() })
+  if (data.status) {
+    const emails = await getTeamEmails()
+    await notifyTeam(
+      `📊 Project status updated — ${data.status}`,
+      `A project status has been updated to <strong>${data.status}</strong>.`,
+      emails
+    )
+  }
 }
 
 export async function deleteProject(id: string) {
@@ -57,7 +78,6 @@ export async function addTask(task: Omit<Task, "id">) {
     updatedAt: serverTimestamp(),
   })
 
-  // ✅ Create notification when task is added
   await addDoc(collection(db, "notifications"), {
     message: `New task added: "${task.name}"`,
     type: "assignment",
@@ -67,21 +87,45 @@ export async function addTask(task: Omit<Task, "id">) {
   })
 
   await logActivity(`Added task: ${task.name}`, task.assigneeId)
+
+  const emails = await getTeamEmails()
+  await notifyTeam(
+    `✅ New task created — ${task.name}`,
+    `A new task has been created.<br><br><strong>${task.name}</strong><br>Priority: ${task.priority}<br>Due: ${task.dueDate}`,
+    emails
+  )
+
   return ref
 }
 
 export async function updateTask(id: string, data: Partial<Task>) {
   await updateDoc(doc(db, "tasks", id), { ...data, updatedAt: serverTimestamp() })
-  if (data.status === "done") {
-    await logActivity(`Completed task`, data.assigneeId || "")
-    // ✅ Create notification when task is marked done
-    await addDoc(collection(db, "notifications"), {
-      message: `Task marked as done`,
-      type: "completed",
-      timestamp: new Date().toLocaleString(),
-      read: false,
-      createdAt: serverTimestamp(),
-    })
+
+  if (data.status) {
+    const statusLabels: Record<string, string> = {
+      "todo": "To Do",
+      "in-progress": "In Progress",
+      "review": "For Review",
+      "done": "Completed ✅",
+    }
+
+    const emails = await getTeamEmails()
+    await notifyTeam(
+      `🔄 Task status updated — ${statusLabels[data.status]}`,
+      `A task status has been updated to <strong>${statusLabels[data.status]}</strong>.`,
+      emails
+    )
+
+    if (data.status === "done") {
+      await addDoc(collection(db, "notifications"), {
+        message: `Task marked as done`,
+        type: "completed",
+        timestamp: new Date().toLocaleString(),
+        read: false,
+        createdAt: serverTimestamp(),
+      })
+      await logActivity(`Completed task`, data.assigneeId || "")
+    }
   }
 }
 
@@ -121,10 +165,19 @@ export function subscribeToCalendarEvents(callback: (events: CalendarEvent[]) =>
 }
 
 export async function addCalendarEvent(event: Omit<CalendarEvent, "id">) {
-  return await addDoc(collection(db, "calendarEvents"), {
+  const ref = await addDoc(collection(db, "calendarEvents"), {
     ...event,
     createdAt: serverTimestamp(),
   })
+
+  const emails = await getTeamEmails()
+  await notifyTeam(
+    `📅 New ${event.type} added — ${event.title}`,
+    `A new <strong>${event.type}</strong> has been added to the calendar.<br><br><strong>${event.title}</strong><br>Date: ${event.date}`,
+    emails
+  )
+
+  return ref
 }
 
 export async function deleteCalendarEvent(id: string) {
@@ -180,8 +233,6 @@ export async function seedDatabase(
     return
   }
 
-  console.log("Seeding team data...")
-
   for (const member of initialTeamMembers) {
     await setDoc(doc(db, "teamMembers", member.id), { ...member, createdAt: serverTimestamp() })
   }
@@ -193,6 +244,4 @@ export async function seedDatabase(
   for (const notif of initialNotifications) {
     await setDoc(doc(db, "notifications", notif.id), { ...notif })
   }
-
-  console.log("Team data seeded!")
 }

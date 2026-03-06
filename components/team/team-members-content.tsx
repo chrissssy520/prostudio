@@ -33,19 +33,20 @@ export function TeamMembersContent() {
   const { teamMembers, tasks, projects } = useAppData()
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [newMember, setNewMember] = useState({ name: "", role: "" })
+  const [newMember, setNewMember] = useState({ name: "", role: "", email: "" })
 
   async function handleAddMember() {
-    if (!newMember.name.trim() || !newMember.role.trim()) return
+    if (!newMember.name.trim() || !newMember.role.trim() || !newMember.email.trim()) return
     const initials = newMember.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     await addTeamMember({
       name: newMember.name,
       role: newMember.role,
+      email: newMember.email,
       initials,
       activeTasks: 0,
       workload: "free",
     })
-    setNewMember({ name: "", role: "" })
+    setNewMember({ name: "", role: "", email: "" })
     setDialogOpen(false)
   }
 
@@ -75,7 +76,7 @@ export function TeamMembersContent() {
             </DialogHeader>
             <div className="flex flex-col gap-4 mt-2">
               <div className="flex flex-col gap-2">
-                <Label className="text-foreground">Full Name</Label>
+                <Label className="text-foreground">Full Name <span className="text-primary">*</span></Label>
                 <Input
                   value={newMember.name}
                   onChange={(e) => setNewMember((p) => ({ ...p, name: e.target.value }))}
@@ -84,7 +85,7 @@ export function TeamMembersContent() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="text-foreground">Role</Label>
+                <Label className="text-foreground">Role <span className="text-primary">*</span></Label>
                 <Input
                   value={newMember.role}
                   onChange={(e) => setNewMember((p) => ({ ...p, role: e.target.value }))}
@@ -92,7 +93,21 @@ export function TeamMembersContent() {
                   placeholder="e.g. Designer"
                 />
               </div>
-              <Button onClick={handleAddMember} className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+              <div className="flex flex-col gap-2">
+                <Label className="text-foreground">Email <span className="text-primary">*</span></Label>
+                <Input
+                  type="email"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember((p) => ({ ...p, email: e.target.value }))}
+                  className="bg-secondary border-border text-foreground"
+                  placeholder="e.g. juan@email.com"
+                />
+              </div>
+              <Button
+                onClick={handleAddMember}
+                disabled={!newMember.name.trim() || !newMember.role.trim() || !newMember.email.trim()}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2"
+              >
                 Create Member
               </Button>
             </div>
@@ -101,7 +116,6 @@ export function TeamMembersContent() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Members grid */}
         <div className={selectedMember ? "lg:col-span-2" : "lg:col-span-3"}>
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {teamMembers.map((member) => {
@@ -125,6 +139,9 @@ export function TeamMembersContent() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground">{member.name}</h3>
                         <p className="text-sm text-muted-foreground">{member.role}</p>
+                        {member.email && (
+                          <p className="text-xs text-muted-foreground/60 truncate">{member.email}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         <button
@@ -136,7 +153,6 @@ export function TeamMembersContent() {
                         <ChevronRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       </div>
                     </div>
-
                     <div className="mt-4">
                       <p className="text-xs text-muted-foreground">Active Tasks</p>
                       <p className="text-lg font-bold text-foreground">{memberTasks.length}</p>
@@ -148,7 +164,6 @@ export function TeamMembersContent() {
           </div>
         </div>
 
-        {/* Member detail panel */}
         {selectedMember && (
           <div className="lg:col-span-1">
             <Card className="bg-card border-border sticky top-4">
@@ -163,6 +178,9 @@ export function TeamMembersContent() {
                     <div>
                       <h3 className="font-semibold text-foreground">{selectedMember.name}</h3>
                       <p className="text-sm text-muted-foreground">{selectedMember.role}</p>
+                      {selectedMember.email && (
+                        <p className="text-xs text-muted-foreground/60">{selectedMember.email}</p>
+                      )}
                     </div>
                   </div>
                   <Button
