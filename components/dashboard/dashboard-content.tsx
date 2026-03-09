@@ -30,7 +30,7 @@ export function DashboardContent() {
   const stats = [
     {
       label: "Total Tasks",
-      value: tasks.length,
+      value: tasks.filter((t) => t.status !== "done").length,
       icon: ClipboardList,
       color: "text-foreground",
       bg: "bg-secondary",
@@ -60,15 +60,11 @@ export function DashboardContent() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Header — no Add Task button */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">
-        Welcome
-        </h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">Welcome</h1>
         <p className="text-sm text-muted-foreground mt-1">{today}</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="bg-card border-border">
@@ -86,7 +82,6 @@ export function DashboardContent() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Active Projects */}
         <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Active Projects</h2>
@@ -154,7 +149,6 @@ export function DashboardContent() {
           </div>
         </div>
 
-        {/* Activity Feed */}
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
           <Card className="bg-card border-border">

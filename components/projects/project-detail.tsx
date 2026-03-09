@@ -40,8 +40,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const displayTasks = liveTasks ?? projectTasks
 
   const completedCount = displayTasks.filter((t) => t.status === "done").length
-  const totalCount = displayTasks.length
-  const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const totalCount = displayTasks.filter((t) => t.status !== "done").length
+  const progress = displayTasks.length > 0 ? Math.round((completedCount / displayTasks.length) * 100) : 0
   const overdueCount = displayTasks.filter(
     (t) => t.status !== "done" && new Date(t.dueDate) < new Date()
   ).length
@@ -103,7 +103,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           <Progress value={progress} className="h-1.5" />
         </div>
         <div className="bg-card rounded-lg border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Tasks</p>
+          <p className="text-xs text-muted-foreground mb-1">Remaining</p>
           <p className="text-xl font-bold text-foreground">{totalCount}</p>
         </div>
         <div className="bg-card rounded-lg border border-border p-4">
