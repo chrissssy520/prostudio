@@ -11,10 +11,10 @@ import { markNotificationRead } from "@/lib/firebaseService"
 import { deleteDoc, doc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
-const typeConfig: Record<string, { icon: typeof Bell; color: string; bg: string; label: string }> = {
-  "due-soon": { icon: Clock, color: "text-primary", bg: "bg-primary/10", label: "Due Soon" },
-  completed: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10", label: "Completed" },
-  assignment: { icon: UserPlus, color: "text-blue-400", bg: "bg-blue-400/10", label: "New Assignment" },
+const typeConfig: Record<string, { icon: typeof Bell; color: string; bg: string; label: string; badge: string }> = {
+  "due-soon": { icon: Clock, color: "text-primary", bg: "bg-primary/10", label: "Due Soon", badge: "bg-primary text-white border-primary" },
+  completed: { icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-500/10", label: "Completed", badge: "bg-emerald-500 text-white border-emerald-500" },
+  assignment: { icon: UserPlus, color: "text-blue-600", bg: "bg-blue-500/10", label: "New Assignment", badge: "bg-blue-500 text-white border-blue-500" },
 }
 
 export function NotificationsPanel() {
@@ -67,7 +67,7 @@ export function NotificationsPanel() {
         {notifications.map((notif) => {
           const config = typeConfig[notif.type] || typeConfig["due-soon"]
           return (
-            <Card key={notif.id} className={`bg-card border-border transition-colors group ${!notif.read ? "border-l-2 border-l-primary" : ""}`}>
+            <Card key={notif.id} className={`border transition-colors group ${!notif.read ? "bg-emerald-500/10 border-emerald-500/30 border-l-4 border-l-emerald-500" : "bg-card border-border"}`}>
               <CardContent className="flex items-start gap-4 p-4">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${config.bg}`}>
                   <config.icon className={`h-4 w-4 ${config.color}`} />
@@ -77,7 +77,7 @@ export function NotificationsPanel() {
                     <p className={`text-sm ${!notif.read ? "font-medium text-foreground" : "text-muted-foreground"}`}>
                       {notif.message}
                     </p>
-                    <Badge variant="outline" className={`text-[10px] shrink-0 ${config.color} border-current/30`}>
+                    <Badge className={`text-[10px] shrink-0 ${config.badge}`}>
                       {config.label}
                     </Badge>
                   </div>
@@ -92,7 +92,6 @@ export function NotificationsPanel() {
                     )}
                   </div>
                 </div>
-                {/* DELETE BUTTON */}
                 <button
                   onClick={() => handleDelete(notif.id)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80 p-1"

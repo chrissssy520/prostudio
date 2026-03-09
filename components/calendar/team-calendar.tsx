@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameMonth, isSameDay, addMonths, subMonths,
-  startOfWeek, endOfWeek, isToday,
+  startOfWeek, endOfWeek, isToday, isBefore, startOfDay,
 } from "date-fns"
 import { ChevronLeft, ChevronRight, CalendarDays, MapPin, Target, Users, Plus, Trash2, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,46 +17,51 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppData } from "@/hooks/useAppData"
 import { addCalendarEvent, deleteCalendarEvent } from "@/lib/firebaseService"
 
-const eventTypeConfig: Record<string, { color: string; icon: typeof CalendarDays; label: string; dot: string; bg: string; ring: string }> = {
+const eventTypeConfig: Record<string, { color: string; icon: typeof CalendarDays; label: string; dot: string; bg: string; ring: string; badge: string }> = {
   deadline: {
-    color: "bg-primary/20 text-primary border-primary/30",
+    color: "text-primary",
     icon: Target,
     label: "Deadline",
     dot: "bg-primary",
-    bg: "bg-red-500/10 dark:bg-red-500/10",
-    ring: "ring-red-400/40",
+    bg: "bg-primary/10",
+    ring: "ring-primary/40",
+    badge: "bg-primary text-white border-primary",
   },
   meeting: {
-    color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    color: "text-blue-600",
     icon: Users,
     label: "Meeting",
-    dot: "bg-blue-400",
-    bg: "bg-blue-500/10 dark:bg-blue-500/10",
+    dot: "bg-blue-500",
+    bg: "bg-blue-500/10",
     ring: "ring-blue-400/40",
+    badge: "bg-blue-500 text-white border-blue-500",
   },
   deliverable: {
-    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    color: "text-emerald-600",
     icon: CalendarDays,
     label: "Deliverable",
-    dot: "bg-emerald-400",
-    bg: "bg-emerald-500/10 dark:bg-emerald-500/10",
+    dot: "bg-emerald-500",
+    bg: "bg-emerald-500/10",
     ring: "ring-emerald-400/40",
+    badge: "bg-emerald-500 text-white border-emerald-500",
   },
   installation: {
-    color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+    color: "text-orange-600",
     icon: MapPin,
     label: "Installation",
-    dot: "bg-orange-400",
-    bg: "bg-orange-500/10 dark:bg-orange-500/10",
+    dot: "bg-orange-500",
+    bg: "bg-orange-500/10",
     ring: "ring-orange-400/40",
+    badge: "bg-orange-500 text-white border-orange-500",
   },
   project: {
-    color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    color: "text-purple-600",
     icon: Target,
     label: "Project Deadline",
-    dot: "bg-purple-400",
-    bg: "bg-purple-500/10 dark:bg-purple-500/10",
+    dot: "bg-purple-500",
+    bg: "bg-purple-500/10",
     ring: "ring-purple-400/40",
+    badge: "bg-purple-500 text-white border-purple-500",
   },
 }
 
@@ -74,17 +79,20 @@ const getDayStyle = (events: any[]): { bg: string; ring: string; badgeDot: strin
 }
 
 export function TeamCalendar() {
-  const { calendarEvents, projects } = useAppData()
+  const { calendarEvents, projects, tasks } = useAppData()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  const today = startOfDay(new Date())
+
   const [form, setForm] = useState({
     title: "",
     type: "meeting",
     date: "",
+    time: "",
     projectId: "",
   })
 
@@ -95,7 +103,9 @@ export function TeamCalendar() {
 
   const getEventsForDay = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd")
+
     const calendarEvts = calendarEvents.filter((e) => e.date === dateStr)
+
     const projectEvts = projects
       .filter((p) => p.status !== "Completed" && format(new Date(p.deadline), "yyyy-MM-dd") === dateStr)
       .map((p) => ({
@@ -104,27 +114,53 @@ export function TeamCalendar() {
         date: dateStr,
         type: "project" as const,
         projectId: p.id,
+        time: "",
       }))
-    return [...calendarEvts, ...projectEvts]
+
+    const taskEvts = tasks
+      .filter((t) => t.status !== "done" && format(new Date(t.dueDate), "yyyy-MM-dd") === dateStr)
+      .map((t) => ({
+        id: `task-${t.id}`,
+        title: t.name,
+        date: dateStr,
+        type: "deadline" as const,
+        projectId: t.projectId,
+        time: "",
+      }))
+
+    return [...calendarEvts, ...projectEvts, ...taskEvts]
   }
 
   const selectedDayEvents = selectedDate ? getEventsForDay(selectedDate) : []
 
   const upcomingEvents = useMemo(() => {
     const projectDeadlines = projects
-      .filter((p) => p.status !== "Completed" && new Date(p.deadline) >= monthStart && new Date(p.deadline) <= monthEnd)
+      .filter((p) => p.status !== "Completed")
       .map((p) => ({
         id: `project-${p.id}`,
         title: p.name,
         date: p.deadline,
         type: "project" as const,
         projectId: p.id,
+        time: "",
       }))
-    return [...calendarEvents, ...projectDeadlines]
+
+    const taskDeadlines = tasks
+      .filter((t) => t.status !== "done")
+      .map((t) => ({
+        id: `task-${t.id}`,
+        title: t.name,
+        date: t.dueDate,
+        type: "deadline" as const,
+        projectId: t.projectId,
+        time: "",
+      }))
+
+    return [...calendarEvents, ...projectDeadlines, ...taskDeadlines]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .filter((e) => new Date(e.date) >= monthStart && new Date(e.date) <= monthEnd)
+      .filter((e) => new Date(e.date) >= today && new Date(e.date) <= monthEnd)
       .slice(0, 8)
-  }, [calendarEvents, projects, currentMonth])
+  }, [calendarEvents, projects, tasks, currentMonth])
 
   const handleAddEvent = async () => {
     if (!form.title.trim() || !form.date) return
@@ -134,9 +170,10 @@ export function TeamCalendar() {
         title: form.title,
         type: form.type as any,
         date: form.date,
+        time: form.time || "",
         projectId: form.projectId || "",
       } as any)
-      setForm({ title: "", type: "meeting", date: "", projectId: "" })
+      setForm({ title: "", type: "meeting", date: "", time: "", projectId: "" })
       setDialogOpen(false)
     } catch (error) {
       console.error(error)
@@ -146,7 +183,7 @@ export function TeamCalendar() {
   }
 
   const handleDeleteEvent = async (id: string) => {
-    if (id.startsWith("project-")) return
+    if (id.startsWith("project-") || id.startsWith("task-")) return
     setDeletingId(id)
     try {
       await deleteCalendarEvent(id)
@@ -210,6 +247,17 @@ export function TeamCalendar() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-medium text-foreground">
+                  Time <span className="text-muted-foreground text-xs">(optional)</span>
+                </Label>
+                <Input
+                  type="time"
+                  value={form.time}
+                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                  className="bg-background border-border text-foreground"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
                 <Label className="text-sm font-medium text-foreground">Project (optional)</Label>
                 <Select value={form.projectId} onValueChange={(v) => setForm({ ...form, projectId: v })}>
                   <SelectTrigger className="bg-background border-border text-foreground">
@@ -261,6 +309,7 @@ export function TeamCalendar() {
                   const isCurrentMonth = isSameMonth(day, currentMonth)
                   const isSelected = selectedDate ? isSameDay(day, selectedDate) : false
                   const todayDay = isToday(day)
+                  const isPast = isBefore(startOfDay(day), today)
                   const { bg, ring, badgeDot } = getDayStyle(events)
 
                   return (
@@ -268,7 +317,7 @@ export function TeamCalendar() {
                       key={day.toISOString()}
                       onClick={() => setSelectedDate(day)}
                       className={`relative flex flex-col items-center p-1.5 sm:p-2 rounded-lg min-h-[60px] sm:min-h-[72px] transition-colors
-                        ${isCurrentMonth ? "text-foreground" : "text-muted-foreground/40"}
+                        ${isCurrentMonth ? isPast ? "text-muted-foreground/40" : "text-foreground" : "text-muted-foreground/20"}
                         ${isSelected
                           ? "bg-primary/10 ring-1 ring-primary"
                           : events.length > 0
@@ -280,7 +329,6 @@ export function TeamCalendar() {
                         ${todayDay ? "bg-primary text-primary-foreground" : ""}`}>
                         {format(day, "d")}
                       </span>
-
                       {events.length > 0 && (
                         <div className="mt-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-background/60 border border-border">
                           <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${badgeDot}`} />
@@ -291,7 +339,6 @@ export function TeamCalendar() {
                   )
                 })}
               </div>
-
               <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border">
                 {Object.entries(eventTypeConfig).map(([type, config]) => (
                   <div key={type} className="flex items-center gap-1.5">
@@ -316,17 +363,20 @@ export function TeamCalendar() {
                     {selectedDayEvents.map((event) => {
                       const config = eventTypeConfig[event.type]
                       const project = projects.find((p) => p.id === event.projectId)
-                      const isProjectEvent = event.id.startsWith("project-")
+                      const isAutoEvent = event.id.startsWith("project-") || event.id.startsWith("task-")
                       return (
                         <div key={event.id} className="flex items-start gap-3 p-2 rounded-lg bg-secondary group">
-                          <div className={`flex h-7 w-7 items-center justify-center rounded-md ${config.color} shrink-0 mt-0.5`}>
-                            <config.icon className="h-3.5 w-3.5" />
+                          <div className={`flex h-7 w-7 items-center justify-center rounded-md ${config.bg} shrink-0 mt-0.5`}>
+                            <config.icon className={`h-3.5 w-3.5 ${config.color}`} />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-foreground">{event.title}</p>
+                            {(event as any).time && (
+                              <p className="text-xs text-primary font-medium">{(event as any).time}</p>
+                            )}
                             {project && <p className="text-xs text-muted-foreground">{project.client}</p>}
                           </div>
-                          {!isProjectEvent && (
+                          {!isAutoEvent && (
                             <button
                               onClick={() => handleDeleteEvent(event.id)}
                               className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"
@@ -346,20 +396,23 @@ export function TeamCalendar() {
           <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">Upcoming Events</h3>
-              {upcomingEvents.length === 0 && <p className="text-sm text-muted-foreground">No events this month.</p>}
+              {upcomingEvents.length === 0 && <p className="text-sm text-muted-foreground">No upcoming events.</p>}
               <div className="flex flex-col gap-2">
                 {upcomingEvents.map((event) => {
                   const config = eventTypeConfig[event.type]
-                  const isProjectEvent = event.id.startsWith("project-")
+                  const isAutoEvent = event.id.startsWith("project-") || event.id.startsWith("task-")
                   return (
                     <div key={event.id} className="flex items-center gap-3 py-1.5 group">
                       <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${config.dot}`} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-foreground truncate">{event.title}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(event.date), "MMM d")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(event.date), "MMM d")}
+                          {(event as any).time && ` · ${(event as any).time}`}
+                        </p>
                       </div>
-                      <Badge variant="outline" className={`text-[10px] ${config.color} shrink-0`}>{config.label}</Badge>
-                      {!isProjectEvent && (
+                      <Badge className={`text-[10px] ${config.badge} shrink-0`}>{config.label}</Badge>
+                      {!isAutoEvent && (
                         <button
                           onClick={() => handleDeleteEvent(event.id)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive p-1"

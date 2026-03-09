@@ -15,10 +15,10 @@ import { CostingTab } from "@/components/projects/costing-tab"
 import { updateProject } from "@/lib/firebaseService"
 
 const statusColors: Record<string, string> = {
-  Planning: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  Active: "bg-primary/15 text-primary border-primary/30",
-  "For Approval": "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  Completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  Planning: "bg-yellow-500 text-white border-yellow-500",
+  Active: "bg-primary text-white border-primary",
+  "For Approval": "bg-orange-500 text-white border-orange-500",
+  Completed: "bg-emerald-500 text-white border-emerald-500",
 }
 
 function deriveProjectStatus(tasks: Task[]): string {
@@ -42,6 +42,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const completedCount = displayTasks.filter((t) => t.status === "done").length
   const totalCount = displayTasks.length
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const overdueCount = displayTasks.filter(
+    (t) => t.status !== "done" && new Date(t.dueDate) < new Date()
+  ).length
 
   useEffect(() => {
     if (!project || displayTasks.length === 0) return
@@ -93,7 +96,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="bg-card rounded-lg border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">Progress</p>
           <p className="text-xl font-bold text-foreground mb-2">{progress}%</p>
@@ -106,6 +109,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         <div className="bg-card rounded-lg border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">Completed</p>
           <p className="text-xl font-bold text-emerald-400">{completedCount}</p>
+        </div>
+        <div className={`rounded-lg border p-4 ${overdueCount > 0 ? "bg-red-500/10 border-red-500/30" : "bg-card border-border"}`}>
+          <p className="text-xs text-muted-foreground mb-1">Overdue</p>
+          <p className={`text-xl font-bold ${overdueCount > 0 ? "text-red-400" : "text-foreground"}`}>
+            {overdueCount}
+          </p>
         </div>
       </div>
 

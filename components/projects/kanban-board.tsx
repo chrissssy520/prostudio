@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { Plus, GripVertical } from "lucide-react"
+import { Plus, GripVertical, Trash2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -13,26 +13,38 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { getProjectTasks, type Task } from "@/lib/data"
-import { addTask, updateTask } from "@/lib/firebaseService"
+import { addTask, updateTask, deleteTask } from "@/lib/firebaseService"
 import { useAppData } from "@/hooks/useAppData"
 
 const columns: { key: Task["status"]; label: string; color: string }[] = [
   { key: "todo", label: "To Do", color: "bg-muted-foreground" },
   { key: "in-progress", label: "In Progress", color: "bg-blue-400" },
-  { key: "review", label: "For Review", color: "bg-orange-400" },
   { key: "done", label: "Done", color: "bg-emerald-400" },
 ]
 
-const statusOrder: Task["status"][] = ["todo", "in-progress", "review", "done"]
+const statusOrder: Task["status"][] = ["todo", "in-progress", "done"]
 
 const priorities: Record<string, string> = {
-  high: "bg-primary/15 text-primary border-primary/30",
-  medium: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  low: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  high: "bg-primary text-white border-primary",
+  medium: "bg-yellow-500 text-white border-yellow-500",
+  low: "bg-blue-500 text-white border-blue-500",
+}
+
+const statusButtonColors: Record<string, string> = {
+  "todo": "bg-primary text-white",
+  "in-progress": "bg-blue-500 text-white",
+  "done": "bg-emerald-500 text-white",
+}
+
+const cardBgColors: Record<string, string> = {
+  "todo": "bg-yellow-500/10 border-yellow-500/30",
+  "in-progress": "bg-blue-500/10 border-blue-500/30",
+  "done": "bg-emerald-500/10 border-emerald-500/30",
+  "overdue": "bg-red-500/10 border-red-500/30",
 }
 
 const categories = [
-  "Concept", "3D Modeling", "Rendering", "Fabrication", "Client Approval", "Installation",
+  "Concept", "3D Modeling", "Rendering", "Fabrication", "Costing", "Installation",
 ]
 
 interface KanbanBoardProps {
@@ -48,6 +60,7 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
   const [tasksList, setTasksList] = useState<Task[]>(initialTasks ?? fallback)
   const [draggedTask, setDraggedTask] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [newTask, setNewTask] = useState({
     name: "",
     assigneeId: "",
@@ -78,6 +91,13 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
     await updateTask(taskId, { status })
   }
 
+  async function handleConfirmDelete() {
+    if (!deleteConfirmId) return
+    updateTasks(tasksList.filter((t) => t.id !== deleteConfirmId))
+    await deleteTask(deleteConfirmId)
+    setDeleteConfirmId(null)
+  }
+
   async function handleAddTask() {
     if (!newTask.name.trim()) return
     const task = {
@@ -94,8 +114,37 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
     setDialogOpen(false)
   }
 
+  const taskToDelete = tasksList.find((t) => t.id === deleteConfirmId)
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}>
+        <DialogContent className="bg-card border-border text-foreground max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Delete Task</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete <span className="text-foreground font-semibold">"{taskToDelete?.name}"</span>? This cannot be undone.
+          </p>
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              className="flex-1 border-border text-foreground bg-secondary"
+              onClick={() => setDeleteConfirmId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleConfirmDelete}
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{tasksList.length} tasks</p>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -181,13 +230,13 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
       </div>
 
       <ScrollArea className="w-full">
-        <div className="flex gap-4 pb-4 min-w-[900px]">
+        <div className="flex gap-4 pb-4 min-w-[600px]">
           {columns.map((col) => {
             const colTasks = tasksList.filter((t) => t.status === col.key)
             return (
               <div
                 key={col.key}
-                className="flex-1 min-w-[220px]"
+                className="flex-1 min-w-[280px]"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleDrop(col.key)}
               >
@@ -199,23 +248,33 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
                 <div className="flex flex-col gap-2">
                   {colTasks.map((task) => {
                     const assignee = teamMembers.find((m) => m.id === task.assigneeId)
+                    const isOverdue = task.status !== "done" && new Date(task.dueDate) < new Date()
+                    const cardStyle = isOverdue ? cardBgColors["overdue"] : cardBgColors[task.status]
                     return (
                       <Card
                         key={task.id}
                         draggable
                         onDragStart={() => handleDragStart(task.id)}
-                        className="bg-card border-border hover:border-primary/30 transition-colors cursor-grab active:cursor-grabbing"
+                        className={`${cardStyle} transition-colors cursor-grab active:cursor-grabbing`}
                       >
                         <CardContent className="p-3">
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <p className="text-sm font-medium text-foreground leading-tight">{task.name}</p>
-                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => setDeleteConfirmId(task.id)}
+                                className="text-muted-foreground hover:text-red-400 transition-colors p-0.5 rounded"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                              <GripVertical className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
+                            </div>
                           </div>
                           <div className="flex flex-wrap gap-1.5 mb-3">
-                            <Badge variant="outline" className={`text-[10px] ${priorities[task.priority]}`}>
+                            <Badge className={`text-[10px] ${priorities[task.priority]}`}>
                               {task.priority}
                             </Badge>
-                            <Badge variant="outline" className="text-[10px] bg-secondary/50 text-muted-foreground border-border">
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">
                               {task.category}
                             </Badge>
                           </div>
@@ -230,24 +289,24 @@ export function KanbanBoard({ projectId, initialTasks, onTasksChange }: KanbanBo
                                 <span className="text-[11px] text-muted-foreground">{assignee.name.split(" ")[0]}</span>
                               </div>
                             )}
-                            <span className="text-[11px] text-muted-foreground">
-                              {format(new Date(task.dueDate), "MMM d")}
+                            <span className={`text-[11px] font-medium ${isOverdue ? "text-red-400" : "text-muted-foreground"}`}>
+                              Due {format(new Date(task.dueDate), "MMM d")}
                             </span>
                           </div>
 
                           {/* Status buttons */}
-                          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border flex-wrap">
+                          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border">
                             {statusOrder.map((s) => (
                               <button
                                 key={s}
                                 onClick={() => handleSetStatus(task.id, s)}
-                                className={`text-[11px] px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                                className={`text-[11px] px-2.5 py-1 rounded-md font-semibold transition-colors flex-1 text-center ${
                                   task.status === s
-                                    ? "bg-primary text-primary-foreground"
+                                    ? statusButtonColors[s]
                                     : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                                 }`}
                               >
-                                {s === "todo" ? "Todo" : s === "in-progress" ? "In Progress" : s === "review" ? "Review" : "Done"}
+                                {s === "todo" ? "Todo" : s === "in-progress" ? "In Progress" : "Done"}
                               </button>
                             ))}
                           </div>

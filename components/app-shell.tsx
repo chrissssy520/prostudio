@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import Image from "next/image"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -10,16 +11,16 @@ import {
   Users,
   Bell,
   Menu,
+  LogOut,
 } from "lucide-react"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppData } from "@/hooks/useAppData"
- import { LogOut } from "lucide-react"
-import { signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -32,18 +33,25 @@ const navItems = [
 function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const { notifications } = useAppData()
   const unreadCount = notifications.filter((n) => !n.read).length
+  const router = useRouter()
+
+  async function handleLogout() {
+    await signOut(auth)
+    router.push("/login")
+  }
 
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-border">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-          <span className="text-primary-foreground font-black text-xs">PS</span>
-        </div>
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-foreground">ProStudio</h1>
-          <p className="text-[11px] text-muted-foreground font-medium tracking-wider uppercase">Project Planner</p>
-        </div>
+      <div className="flex items-center px-5 py-4 border-b border-border">
+        <Image
+          src="/logo1.png"
+          alt="BrainSells Integrated"
+          width={160}
+          height={48}
+          className="object-contain"
+          priority
+        />
       </div>
 
       {/* Nav links */}
@@ -85,30 +93,30 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         </nav>
       </ScrollArea>
 
-    {/* User + Footer */}
-<div className="border-t border-border px-4 py-4 flex flex-col gap-3">
-  <div className="flex items-center gap-3">
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-      CO
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-foreground truncate">Christian Kho Aler</p>
-      <p className="text-xs text-muted-foreground truncate">Project Manager</p>
-    </div>
-    <button
-      onClick={() => signOut(auth)}
-      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-      title="Logout"
-    >
-      <LogOut className="h-4 w-4" />
-    </button>
-  </div>
-  <p className="text-[10px] text-muted-foreground/40 text-center leading-tight">
-    Designed & built by{" "}
-    <span className="text-muted-foreground/60 font-medium">Christian Otnis</span>
-    <br />ProStudio © 2026
-  </p>
-</div>
+      {/* User + Footer */}
+      <div className="border-t border-border px-4 py-4 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
+            CO
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">ADMIN</p>
+            <p className="text-xs text-muted-foreground truncate"></p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-400/10"
+            title="Log out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground/40 text-center leading-tight">
+          Designed & built by{" "}
+          <span className="text-muted-foreground/60 font-medium">Christian Kho Aler</span>
+          <br />BrainSells © 2026
+        </p>
+      </div>
     </div>
   )
 }

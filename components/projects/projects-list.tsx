@@ -24,10 +24,10 @@ import { addProject } from "@/lib/firebaseService"
 import type { Project } from "@/lib/data"
 
 const statusColors: Record<string, string> = {
-  Planning: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  Active: "bg-primary/15 text-primary border-primary/30",
-  "For Approval": "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  Completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  Planning: "bg-yellow-500 text-white border-yellow-500",
+  Active: "bg-primary text-white border-primary",
+  "For Approval": "bg-orange-500 text-white border-orange-500",
+  Completed: "bg-emerald-500 text-white border-emerald-500",
 }
 
 const allStatuses = ["All", "Planning", "Active", "For Approval", "Completed"]
@@ -159,7 +159,7 @@ export function ProjectsList() {
                       <SelectContent className="bg-card border-border">
                         <SelectItem value="Planning" className="text-foreground">Planning</SelectItem>
                         <SelectItem value="Active" className="text-foreground">Active</SelectItem>
-                        <SelectItem value="For Approval" className="text-foreground">For Approval</SelectItem>
+            
                         <SelectItem value="Completed" className="text-foreground">Completed</SelectItem>
                       </SelectContent>
                     </Select>
