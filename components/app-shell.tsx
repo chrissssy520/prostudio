@@ -97,19 +97,13 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
       <div className="border-t border-border px-4 py-4 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
-            CO
+            
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">ADMIN</p>
             <p className="text-xs text-muted-foreground truncate"></p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-400/10"
-            title="Log out"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+
         </div>
         <p className="text-[10px] text-muted-foreground/40 text-center leading-tight">
           Designed & built by{" "}

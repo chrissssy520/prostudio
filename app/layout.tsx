@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" })
 
 export const metadata: Metadata = {
-  title: 'ProStudio | Team Project Planner',
+  title: 'Brainsells | Team Project Planner',
   description: 'Team project planner and dashboard for creative production companies',
 }
 
